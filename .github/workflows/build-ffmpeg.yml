@@ -1,0 +1,47 @@
+name: Build FFmpeg decoder for Media3
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install NDK
+        run: |
+          echo "y" | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
+          echo "NDK_PATH=${ANDROID_HOME}/ndk/26.1.10909125" >> $GITHUB_ENV
+
+      - name: Fetch FFmpeg 6.0 source
+        run: |
+          cd libraries/decoder_ffmpeg/src/main/jni
+          git clone --branch release/6.0 --depth 1 https://github.com/FFmpeg/FFmpeg.git ffmpeg
+
+      - name: Build FFmpeg native libraries
+        run: |
+          cd libraries/decoder_ffmpeg/src/main/jni
+          chmod +x build_ffmpeg.sh
+          ./build_ffmpeg.sh \
+            "$(pwd)/.." \
+            "${NDK_PATH}" \
+            "linux-x86_64" \
+            21 \
+            ac3 eac3 dca truehd mp3 aac
+
+      - name: Build the Media3 FFmpeg module (AAR)
+        run: ./gradlew :lib-decoder-ffmpeg:assembleRelease
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: media3-decoder-ffmpeg-aar
+          path: libraries/decoder_ffmpeg/build/outputs/aar/*.aar
