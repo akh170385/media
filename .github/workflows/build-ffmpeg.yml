@@ -44,4 +44,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: media3-decoder-ffmpeg-aar
-          path: libraries/decoder_ffmpeg/build/outputs/aar/*.aar
+          path: '**/*.aar'
